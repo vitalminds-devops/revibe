@@ -1,0 +1,11 @@
+# Build context for backend/Dockerfile is the repo root: send only what the image needs.
+**/.git
+**/.env
+**/.env.*
+!**/.env.example
+.venv/
+**/__pycache__/
+backend/models/
+frontend/
+.playwright-mcp/
+README.md

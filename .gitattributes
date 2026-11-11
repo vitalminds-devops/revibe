@@ -1,0 +1,6 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Files used inside Linux containers: keep Unix line endings even on a Windows checkout.
+Dockerfile text eol=lf
+*.sh text eol=lf

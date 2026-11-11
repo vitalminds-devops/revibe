@@ -1,0 +1,131 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "Skip to workspace" [ref=e3] [cursor=pointer]:
+      - /url: "#main"
+    - complementary [ref=e4]:
+      - link "ReVibe home" [ref=e5] [cursor=pointer]:
+        - /url: "#"
+        - text: ReVibe
+        - generic [ref=e8]: .
+      - paragraph [ref=e9]: WORKSPACE
+      - navigation "Main navigation" [ref=e10]:
+        - link "Overview" [ref=e11] [cursor=pointer]:
+          - /url: "#main"
+        - link "Screenshots 0" [ref=e18] [cursor=pointer]:
+          - /url: "#screenshots"
+          - text: Screenshots
+          - generic [ref=e21]: "0"
+        - link "Reports 0" [ref=e22] [cursor=pointer]:
+          - /url: "#reports"
+          - text: Reports
+          - generic [ref=e26]: "0"
+      - generic [ref=e27]:
+        - heading "Less admin. More accomplishment." [level=3] [ref=e32]: Less admin.More accomplishment.
+        - paragraph [ref=e33]: Turn everyday updates into reports that tell the whole story.
+        - link "Create a report" [ref=e34] [cursor=pointer]:
+          - /url: "#capture"
+      - generic [ref=e42]:
+        - strong [ref=e43]: Local processing
+        - paragraph [ref=e44]: Your AI runs on this PC
+    - generic [ref=e45]:
+      - banner [ref=e46]:
+        - generic [ref=e47]:
+          - text: Workspace
+          - generic [ref=e48]: /
+          - strong [ref=e49]: Overview
+        - generic [ref=e50]:
+          - generic [ref=e51]: Local AI
+          - generic "ReVibe workspace" [ref=e53]: RV
+      - main [ref=e54]:
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - generic [ref=e57]: YOUR REPORTING, REIMAGINED
+            - heading "Good work. Great reports." [level=1] [ref=e59]
+            - paragraph [ref=e60]: A little less paperwork. A lot more progress.
+          - button "Add screenshots" [ref=e61] [cursor=pointer]
+        - generic [ref=e62]:
+          - generic [ref=e65]:
+            - paragraph [ref=e66]: Screenshots captured
+            - paragraph [ref=e67]
+            - paragraph [ref=e69]: Your source material
+          - generic [ref=e78]:
+            - paragraph [ref=e79]: Reports ready
+            - paragraph [ref=e80]
+            - paragraph [ref=e82]: Ready to review & export
+          - generic [ref=e90]:
+            - paragraph [ref=e91]: In the queue
+            - paragraph [ref=e92]
+            - paragraph [ref=e94]: Waiting to be generated
+          - generic [ref=e101]:
+            - paragraph [ref=e102]: Times recorded
+            - paragraph [ref=e103]
+            - paragraph [ref=e105]: Rectification time included
+        - region "Capture screenshots" [ref=e110]:
+          - generic [ref=e111]:
+            - generic [ref=e112]:
+              - generic [ref=e113]:
+                - generic [ref=e114]: FROM CHAT TO CLARITY
+                - heading "Your next report starts with a screenshot." [level=2] [ref=e115]: Your next reportstarts with a screenshot.
+                - paragraph [ref=e116]: Add your technicians’ chat updates. We’ll help turn them into accomplishment reports.
+                - link "Let’s capture some progress" [ref=e117] [cursor=pointer]:
+                  - /url: "#upload"
+              - generic [aria-hidden] [ref=e120]:
+                - generic [ref=e139]: ACCOMPLISHMENT
+                - generic [ref=e165]: Ready to report
+            - generic [ref=e169]:
+              - generic [ref=e174]:
+                - paragraph [ref=e175]:
+                  - text: Drop screenshots here, or
+                  - button "browse files" [ref=e176] [cursor=pointer]
+                - generic [ref=e177]: Image files · Up to 10 MB each · Multiple uploads welcome
+              - button "Add screenshots" [ref=e178]
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - generic [ref=e181]: A simpler workflow
+              - paragraph [ref=e188]: Three steps. One polished report.
+            - generic [ref=e189]:
+              - list [ref=e190]:
+                - listitem [ref=e191]:
+                  - generic [ref=e192]: "1"
+                  - generic [ref=e193]:
+                    - heading "Capture the work" [level=3] [ref=e194]
+                    - paragraph [ref=e195]: Upload screenshots or capture a mirrored phone screen.
+                - listitem [ref=e196]:
+                  - generic [ref=e197]: "2"
+                  - generic [ref=e198]:
+                    - heading "Let AI do the paperwork" [level=3] [ref=e199]
+                    - paragraph [ref=e200]: Extract the details and generate a report, right on your PC.
+                - listitem [ref=e201]:
+                  - generic [ref=e202]: "3"
+                  - generic [ref=e203]:
+                    - heading "Review. Export. Done." [level=3] [ref=e204]
+                    - paragraph [ref=e205]: Check the results, then export to PDF or Excel.
+              - button "Generate report" [disabled]
+              - paragraph [ref=e206]: Add screenshots to get started
+        - status
+        - region "Screenshots" [ref=e207]:
+          - generic [ref=e208]:
+            - generic [ref=e209]:
+              - heading "Your screenshots 0" [level=2] [ref=e210]:
+                - text: Your screenshots
+                - generic [ref=e211]: "0"
+              - paragraph [ref=e212]: The source of your next great report.
+            - tablist "Filter screenshots" [ref=e214]:
+              - tab "All" [selected] [ref=e215] [cursor=pointer]
+              - tab "Pending" [ref=e216] [cursor=pointer]
+              - tab "Ready" [ref=e217] [cursor=pointer]
+          - generic "Loading screenshots" [ref=e218]
+        - article "Accomplishment report" [ref=e223]:
+          - generic [ref=e225]:
+            - generic [ref=e226]: THE BIGGER PICTURE
+            - heading "Accomplishment report" [level=2] [ref=e227]
+            - paragraph [ref=e228]: Your work, brought together.
+          - generic [ref=e234]:
+            - heading "Big insights start with small updates." [level=3] [ref=e235]
+            - paragraph [ref=e236]: Generate your first report to unlock charts, extracted details, and exports.
+        - generic [ref=e239]:
+          - generic [ref=e240]:
+            - text: ReVibe
+            - generic [ref=e242]: Make every update count.
+          - generic [ref=e243]: Built for the work behind the work.
+  - button "Open Next.js Dev Tools" [ref=e249] [cursor=pointer]

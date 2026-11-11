@@ -1,0 +1,11 @@
+- generic [active] [ref=f2e1]:
+  - main [ref=f2e2]:
+    - heading "Accomplishment Report Generator" [level=1] [ref=f2e3]
+    - paragraph [ref=f2e4]: Upload multiple screenshots for one combined report with charts. Local OCR and AI process each image in turn; allow about a minute per image. Review results for accuracy.
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]: Report screenshots
+      - button "Report screenshots" [ref=f2e7]
+      - paragraph [ref=f2e8]: 0 images selected · maximum 10 MB per image
+      - button "Generate combined report" [disabled] [ref=f2e9]
+  - button "Open Next.js Dev Tools" [ref=f2e15] [cursor=pointer]
+  - alert [ref=f2e19]
