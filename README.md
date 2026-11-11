@@ -163,15 +163,15 @@ top bar. Sign-in travels over plain HTTP on your Wi-Fi, so use it only on networ
 |---|---|---|
 | `migrate` | Applies Prisma migrations, then exits; the others wait for it | — |
 | `backend` | FastAPI + local OCR/AI (CPU-only PyTorch) | Only inside the compose network |
-| `web` | Next.js website, login and `/api` proxy to `backend` | Published on port `3000` for your nginx server |
+| `web` | Next.js website, login and `/api` proxy to `backend` | nginx via `app-net`; `127.0.0.1:3000` on the host |
 
 Postgres and R2 stay external (`DATABASE_URL`, `R2_*`). The AI models are baked into the
 backend image at build time (~1.1 GB), so `backend/models/` must be present on the machine that
-builds it. Ports come from `.env`: `WEB_PORT` (published port, default `3000`) and `BACKEND_PORT`
+builds it. Ports come from `.env`: `WEB_PORT` (localhost-only host port, default `3000`) and `BACKEND_PORT`
 (backend port inside the compose network, default `8000`). Rebuild after changing `BACKEND_PORT`.
 
 **Server needs:** Docker with the Compose plugin, about 4 GB RAM (the model loads into
-memory), and network access from your nginx server to port 3000.
+memory), and nginx running in Docker on the same server.
 
 **1. Code, models and settings** (models and `.env` are not in Git):
 
@@ -184,17 +184,20 @@ nano .env    # set APP_URL=https://your-domain (the address nginx serves)
 **2. Build and start:**
 
 ```bash
+docker network create app-net         # once per server; shared with the nginx container
 docker compose up -d --build
 docker compose ps                     # backend and web should become "healthy"
 docker compose exec web npm run auth:provision admin    # first admin
 ```
 
-**3. Point your nginx at it:** proxy your domain to `http://<docker-host>:3000`. Two settings
+**3. Point your nginx at it:** add the nginx container to `app-net`
+(`networks: { app-net: { external: true } }` in its compose file) and proxy to
+`http://revibe-web:3000`. Two settings
 matter: `client_max_body_size 12m;` (screenshots are up to 10 MB) and
 `proxy_read_timeout 600s;` (report generation runs on the CPU and can take minutes). Pass the
-`Host` and `X-Forwarded-For`/`X-Forwarded-Proto` headers as usual. Port 3000 is published on
-all interfaces: allow only the nginx server in the firewall, or bind it to a private IP in
-`docker-compose.yml` (e.g. `"10.0.0.5:${WEB_PORT:-3000}:3000"`). `WEB_PORT=8080` in `.env` changes the host port.
+`Host` and `X-Forwarded-For`/`X-Forwarded-Proto` headers as usual. The site is also published on
+`127.0.0.1:${WEB_PORT}` (this server only) for checks such as `curl http://127.0.0.1:3000/login`;
+`WEB_PORT=8080` in `.env` changes that port.
 
 **Update:**
 
