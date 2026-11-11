@@ -1,5 +1,5 @@
 # FastAPI backend: OCR + local LLM. Build context is the repository root (see docker-compose.yml).
-# The AI models are NOT baked in; compose mounts ./backend/models read-only.
+# The AI models in backend/models/ are baked in (~1.1 GB): copy them here before building.
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -20,11 +20,13 @@ RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/c
 COPY backend/requirements.txt backend/requirements.txt
 RUN pip install -r backend/requirements.txt
 
-COPY backend/ backend/
-
-RUN useradd --system --uid 10001 --home-dir /app app && chown -R app /app
+RUN useradd --system --uid 10001 --home-dir /app app && chown app /app
+# --chown on the copy: a separate chown -R would duplicate the 1 GB of models in another layer.
+COPY --chown=app backend/ backend/
 USER app
 
+ENV BACKEND_PORT=8000
 EXPOSE 8000
 # One worker: the models load into memory once and inference runs one image at a time.
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Shell form so BACKEND_PORT from .env applies; exec keeps uvicorn as PID 1 for clean stops.
+CMD exec uvicorn backend.main:app --host 0.0.0.0 --port "$BACKEND_PORT" --workers 1

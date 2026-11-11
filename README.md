@@ -165,8 +165,10 @@ top bar. Sign-in travels over plain HTTP on your Wi-Fi, so use it only on networ
 | `backend` | FastAPI + local OCR/AI (CPU-only PyTorch) | Only inside the compose network |
 | `web` | Next.js website, login and `/api` proxy to `backend` | Published on port `3000` for your nginx server |
 
-Postgres and R2 stay external (`DATABASE_URL`, `R2_*`). The AI models are not baked into the
-image; `./backend/models` is mounted read-only.
+Postgres and R2 stay external (`DATABASE_URL`, `R2_*`). The AI models are baked into the
+backend image at build time (~1.1 GB), so `backend/models/` must be present on the machine that
+builds it. Ports come from `.env`: `WEB_PORT` (published port, default `3000`) and `BACKEND_PORT`
+(backend port inside the compose network, default `8000`). Rebuild after changing `BACKEND_PORT`.
 
 **Server needs:** Docker with the Compose plugin, about 4 GB RAM (the model loads into
 memory), and network access from your nginx server to port 3000.
@@ -182,17 +184,20 @@ nano .env    # set APP_URL=https://your-domain (the address nginx serves)
 **2. Build and start:**
 
 ```bash
+docker network create appnet          # once per server; shared with your nginx container
 docker compose up -d --build
 docker compose ps                     # backend and web should become "healthy"
 docker compose exec web npm run auth:provision admin    # first admin
 ```
 
-**3. Point your nginx at it:** proxy your domain to `http://<docker-host>:3000`. Two settings
+**3. Point your nginx at it:** if nginx runs in Docker on the same server, add it to `appnet`
+(`networks: { appnet: { external: true } }` in its compose file) and proxy to
+`http://revibe-web:3000`. If nginx runs elsewhere, proxy to `http://<docker-host>:3000`. Two settings
 matter: `client_max_body_size 12m;` (screenshots are up to 10 MB) and
 `proxy_read_timeout 600s;` (report generation runs on the CPU and can take minutes). Pass the
 `Host` and `X-Forwarded-For`/`X-Forwarded-Proto` headers as usual. Port 3000 is published on
 all interfaces: allow only the nginx server in the firewall, or bind it to a private IP in
-`docker-compose.yml` (e.g. `"10.0.0.5:3000:3000"`). `WEB_PORT=8080` changes the host port.
+`docker-compose.yml` (e.g. `"10.0.0.5:${WEB_PORT:-3000}:3000"`). `WEB_PORT=8080` in `.env` changes the host port.
 
 **Update:**
 
@@ -252,7 +257,7 @@ backend/
   routers/screenshots.py  upload screenshots; generate a report per screenshot
   test_main.py        tests (python -m backend.test_main)
 docker-compose.yml    migrate + backend + web (see "Deploy with Docker")
-backend/Dockerfile    backend image (CPU-only PyTorch; models mounted at runtime)
+backend/Dockerfile    backend image (CPU-only PyTorch; models baked in)
 frontend/Dockerfile   website image (also runs migrations and admin commands)
 frontend/
   prisma/schema.prisma    every table: login + folders + screenshots

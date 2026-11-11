@@ -1,6 +1,9 @@
 # ReVibe: `docker compose up -d --build`. Settings come from .env next to this file (one file for everything).
 # Postgres and R2 are external (DATABASE_URL, R2_*). nginx runs on a separate server and proxies
-# to the published web port; the backend is only reachable inside this compose network.
+# to the published web port (WEB_PORT); the backend (BACKEND_PORT) is only reachable inside this
+# compose network. The AI models are baked into the backend image.
+# web also joins the shared "appnet" network, so an nginx container on this server can proxy to
+# http://revibe-web:3000. Create it once: `docker network create appnet`.
 
 x-env: &env
   env_file: .env
@@ -10,7 +13,11 @@ services:
   # One-off: applies Prisma migrations, then exits. backend and web wait for it.
   migrate:
     <<: *env
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # Baked into the website's /api rewrite: rebuild after changing BACKEND_PORT.
+        API_URL: http://backend:${BACKEND_PORT:-8000}
     image: revibe-web
     command: ["npm", "run", "db:migrate"]
     restart: "no"
@@ -21,13 +28,11 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     image: revibe-backend
-    volumes:
-      - ./backend/models:/app/backend/models:ro
     depends_on:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/folders', timeout=5)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${BACKEND_PORT:-8000}/folders', timeout=5)"]
       interval: 30s
       timeout: 10s
       start_period: 120s
@@ -37,6 +42,10 @@ services:
     <<: *env
     image: revibe-web
     init: true
+    networks:
+      default:
+      appnet:
+        aliases: [revibe-web]
     ports:
       # Reachable by the nginx server. Restrict with a firewall, or bind to a private IP,
       # e.g. "10.0.0.5:3000:3000".
@@ -52,3 +61,7 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 3
+
+networks:
+  appnet:
+    external: true
