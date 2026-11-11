@@ -184,15 +184,12 @@ nano .env    # set APP_URL=https://your-domain (the address nginx serves)
 **2. Build and start:**
 
 ```bash
-docker network create appnet          # once per server; shared with your nginx container
 docker compose up -d --build
 docker compose ps                     # backend and web should become "healthy"
 docker compose exec web npm run auth:provision admin    # first admin
 ```
 
-**3. Point your nginx at it:** if nginx runs in Docker on the same server, add it to `appnet`
-(`networks: { appnet: { external: true } }` in its compose file) and proxy to
-`http://revibe-web:3000`. If nginx runs elsewhere, proxy to `http://<docker-host>:3000`. Two settings
+**3. Point your nginx at it:** proxy your domain to `http://<docker-host>:3000`. Two settings
 matter: `client_max_body_size 12m;` (screenshots are up to 10 MB) and
 `proxy_read_timeout 600s;` (report generation runs on the CPU and can take minutes). Pass the
 `Host` and `X-Forwarded-For`/`X-Forwarded-Proto` headers as usual. Port 3000 is published on
