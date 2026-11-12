@@ -196,10 +196,12 @@ matter: `client_max_body_size 12m;` (screenshots are up to 10 MB) and
 all interfaces: allow only the nginx server in the firewall, or bind it to a private IP in
 `docker-compose.yml` (e.g. `"10.0.0.5:${WEB_PORT:-3000}:3000"`). `WEB_PORT=8080` in `.env` changes the host port.
 
-**Update:**
+**Update:** `deploy.sh` pulls, rebuilds, restarts (migrations run first), waits until `backend` and
+`web` are healthy, and removes old images. Install it once so `deploy` works from any folder:
 
 ```bash
-git pull && docker compose up -d --build     # migrate runs again before the apps restart
+sudo ln -sf "$PWD/deploy.sh" /usr/local/bin/deploy    # run in the repo folder, once
+deploy                                                 # every update after that
 ```
 
 **Operate:**

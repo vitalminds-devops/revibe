@@ -81,6 +81,7 @@ model Folder {
   id          BigInt       @id @default(autoincrement())
   name        String       @unique(map: "folders_name_key")
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  archivedAt  DateTime?    @map("archived_at") @db.Timestamptz(6) // hidden from the main list
   screenshots Screenshot[]
 
   @@map("folders")

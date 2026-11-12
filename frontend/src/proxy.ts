@@ -14,6 +14,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Public: the login page, Better Auth's own endpoints and static assets.
-  matcher: ["/((?!login|api/auth|_next/static|_next/image|favicon.ico).*)"],
+  // Public: the login page, Better Auth's own endpoints, static assets and the favicon (app/icon.svg).
+  matcher: ["/((?!login|api/auth|_next/static|_next/image|icon.svg).*)"],
 };

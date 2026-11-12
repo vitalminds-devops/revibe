@@ -17,6 +17,7 @@ class FolderOut(BaseModel):
     id: int
     name: str
     created_at: datetime
+    archived: bool
     screenshots: int
     reports: int
     pending: int

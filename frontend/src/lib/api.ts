@@ -4,6 +4,7 @@ export type Folder = {
   id: number;
   name: string;
   created_at: string;
+  archived: boolean;
   screenshots: number;
   reports: number;
   pending: number;
@@ -73,8 +74,14 @@ function sendName(method: "POST" | "PATCH", path: string, name: string) {
 }
 
 export const api = {
-  folders: (sort: FolderSort, signal?: AbortSignal) =>
-    request<Folder[]>(`/folders?sort=${sort}`, { signal: listSignal(signal) }),
+  folders: (sort: FolderSort, archived: boolean, signal?: AbortSignal) =>
+    request<Folder[]>(`/folders?sort=${sort}&archived=${archived}`, {
+      signal: listSignal(signal),
+    }),
+  archiveFolder: (id: number) =>
+    request<Folder>(`/folders/${id}/archive`, { method: "POST" }),
+  restoreFolder: (id: number) =>
+    request<Folder>(`/folders/${id}/restore`, { method: "POST" }),
   createFolder: (name: string) => sendName("POST", "/folders", name),
   renameFolder: (id: number, name: string) =>
     sendName("PATCH", `/folders/${id}`, name),
@@ -105,6 +112,8 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     }),
+  deleteShot: (shotId: number) =>
+    request<null>(`/screenshots/${shotId}`, { method: "DELETE" }),
   generate: (shotId: number) =>
     request<Shot>(`/screenshots/${shotId}/report`, { method: "POST" }),
   exportUrl: (folderId: number) => `/api/folders/${folderId}/export.xlsx`,

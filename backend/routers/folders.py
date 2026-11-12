@@ -38,7 +38,7 @@ def folder_stats():
 def to_out(row) -> FolderOut:
     folder, screenshots, reports, pending = row
     return FolderOut(id=folder.id, name=folder.name, created_at=folder.created_at,
-                     screenshots=screenshots, reports=reports, pending=pending)
+                     archived=folder.archived_at is not None, screenshots=screenshots, reports=reports, pending=pending)
 
 
 def get_folder(session: Session, folder_id: int) -> FolderOut:
@@ -58,8 +58,10 @@ def ensure_name_free(session: Session, name: str, folder_id: int | None = None):
 
 
 @router.get("", response_model=list[FolderOut])
-def list_folders(session: SessionDep, sort: Literal["newest", "name"] = "newest"):
-    return [to_out(row) for row in session.execute(folder_stats().order_by(*SORTS[sort]))]
+def list_folders(session: SessionDep, sort: Literal["newest", "name"] = "newest", archived: bool = False):
+    archived_filter = Folder.archived_at.is_not(None) if archived else Folder.archived_at.is_(None)
+    query = folder_stats().where(archived_filter).order_by(*SORTS[sort])
+    return [to_out(row) for row in session.execute(query)]
 
 
 @router.post("", status_code=201, response_model=FolderOut)
@@ -85,6 +87,25 @@ def rename_folder(folder_id: int, folder: FolderIn, session: SessionDep):
         session.commit()
     except IntegrityError as exc:
         raise HTTPException(409, f'A folder named "{folder.name}" already exists') from exc
+    return get_folder(session, folder_id)
+
+
+@router.post("/{folder_id}/archive", response_model=FolderOut)
+def archive_folder(folder_id: int, session: SessionDep):
+    return set_archived(session, folder_id, True)
+
+
+@router.post("/{folder_id}/restore", response_model=FolderOut)
+def restore_folder(folder_id: int, session: SessionDep):
+    return set_archived(session, folder_id, False)
+
+
+def set_archived(session: Session, folder_id: int, archived: bool) -> FolderOut:
+    row = session.get(Folder, folder_id)
+    if not row:
+        raise HTTPException(404, "Folder not found")
+    row.archived_at = func.now() if archived else None
+    session.commit()
     return get_folder(session, folder_id)
 
 

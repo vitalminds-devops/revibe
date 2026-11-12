@@ -1,6 +1,14 @@
 "use client";
 import { useState } from "react";
-import { Check, FolderPlus, Pencil, X } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowLeft,
+  Check,
+  FolderPlus,
+  Pencil,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Folder, FolderSort } from "@/lib/api";
 
@@ -9,6 +17,11 @@ type Props = {
   selected: Folder | null;
   sort: FolderSort;
   disabled: boolean;
+  /** Showing archived folders instead of the main list. */
+  archivedView: boolean;
+  onToggleArchived: () => void;
+  onArchive: (folder: Folder) => void;
+  onRestore: (folder: Folder) => void;
   onSort: (sort: FolderSort) => void;
   onSelect: (id: number) => void;
   onCreate: (name: string) => Promise<void>;
@@ -21,6 +34,10 @@ export function FolderBar({
   selected,
   sort,
   disabled,
+  archivedView,
+  onToggleArchived,
+  onArchive,
+  onRestore,
   onSort,
   onSelect,
   onCreate,
@@ -54,7 +71,7 @@ export function FolderBar({
   return (
     <section id="folders" className="folder-panel" aria-label="Folders">
       <div className="folder-panel-head">
-        <p className="nav-caption">FOLDERS</p>
+        <p className="nav-caption">{archivedView ? "ARCHIVED" : "FOLDERS"}</p>
         <label className="sr-only" htmlFor="folder-sort">
           Sort folders
         </label>
@@ -131,16 +148,38 @@ export function FolderBar({
                   </span>
                 </button>
                 {active && (
-                  <button
-                    type="button"
-                    className="folder-rename"
-                    aria-label={`Rename ${folder.name}`}
-                    title="Rename folder"
-                    disabled={disabled}
-                    onClick={() => open("rename")}
-                  >
-                    <Pencil size={13} />
-                  </button>
+                  <span className="folder-actions">
+                    <button
+                      type="button"
+                      aria-label={`Rename ${folder.name}`}
+                      title="Rename folder"
+                      disabled={disabled}
+                      onClick={() => open("rename")}
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    {folder.archived ? (
+                      <button
+                        type="button"
+                        aria-label={`Restore ${folder.name}`}
+                        title="Restore folder"
+                        disabled={disabled}
+                        onClick={() => onRestore(folder)}
+                      >
+                        <ArchiveRestore size={13} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label={`Archive ${folder.name}`}
+                        title="Archive folder"
+                        disabled={disabled}
+                        onClick={() => onArchive(folder)}
+                      >
+                        <Archive size={13} />
+                      </button>
+                    )}
+                  </span>
                 )}
               </li>
             );
@@ -149,10 +188,22 @@ export function FolderBar({
       ) : (
         mode === "idle" && (
           <p className="folder-empty">
-            No folders yet. Click + to create one, e.g. “Nov 11 – Team 5”.
+            {archivedView
+              ? "No archived folders."
+              : "No folders yet. Click + to create one, e.g. “Nov 11 – Team 5”."}
           </p>
         )
       )}
+      <button
+        type="button"
+        className="folder-archive-toggle"
+        aria-pressed={archivedView}
+        disabled={disabled}
+        onClick={onToggleArchived}
+      >
+        {archivedView ? <ArrowLeft size={14} /> : <Archive size={14} />}
+        {archivedView ? "Back to folders" : "Archived folders"}
+      </button>
     </section>
   );
 }

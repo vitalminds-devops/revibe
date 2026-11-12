@@ -8,6 +8,7 @@ import {
   Clock3,
   Monitor,
   Plus,
+  Trash2,
   Upload,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -28,10 +29,18 @@ type Props = {
   loading: boolean;
   canAdd: boolean;
   onAdd: () => void;
+  /** Undefined while the page is busy: the delete buttons stay visible but disabled. */
+  onDelete?: (shot: Shot) => void;
 };
 
 /** Screenshots and pasted texts in the selected folder, filterable by report status. */
-export function ScreenshotGrid({ shots, loading, canAdd, onAdd }: Props) {
+export function ScreenshotGrid({
+  shots,
+  loading,
+  canAdd,
+  onAdd,
+  onDelete,
+}: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const visible = shots.filter(
     (shot) =>
@@ -93,13 +102,25 @@ export function ScreenshotGrid({ shots, loading, canAdd, onAdd }: Props) {
                         {shot.source === "text" ? "Text" : "Screenshot"} #
                         {shot.id}
                       </h3>
-                      {shot.source === "text" ? (
-                        <ClipboardPaste size={14} />
-                      ) : shot.source === "screen" ? (
-                        <Monitor size={14} />
-                      ) : (
-                        <Upload size={14} />
-                      )}
+                      <span className="flex items-center gap-1">
+                        {shot.source === "text" ? (
+                          <ClipboardPaste size={14} />
+                        ) : shot.source === "screen" ? (
+                          <Monitor size={14} />
+                        ) : (
+                          <Upload size={14} />
+                        )}
+                        <button
+                          type="button"
+                          className="shot-delete"
+                          aria-label={`Delete ${shot.source === "text" ? "text" : "screenshot"} #${shot.id}`}
+                          title="Delete"
+                          disabled={!onDelete}
+                          onClick={() => onDelete?.(shot)}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </span>
                     </div>
                     <time dateTime={shot.created_at}>
                       {new Date(shot.created_at).toLocaleString()}

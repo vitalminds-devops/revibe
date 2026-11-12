@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   ArrowRight,
-  AudioLines,
+  Archive,
+  ArchiveRestore,
   FolderPlus,
   LogOut,
   Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CaptureSection } from "@/components/capture-section";
 import { CaptureToolbar } from "@/components/capture-toolbar";
@@ -53,6 +55,8 @@ export default function Home() {
   const [loadedFor, setLoadedFor] = useState<number | null>(null);
   const [busy, setBusy] = useState("");
   const [view, setView] = useState("items");
+  const [showArchived, setShowArchived] = useState(false);
+  const [listVersion, setListVersion] = useState(0); // bump to refetch folders
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -70,7 +74,7 @@ export default function Home() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    api.folders(sort, ctrl.signal).then(
+    api.folders(sort, showArchived, ctrl.signal).then(
       (list) => {
         setFolders(list);
         setSelectedId((id) =>
@@ -84,7 +88,7 @@ export default function Home() {
       },
     );
     return () => ctrl.abort();
-  }, [sort]);
+  }, [sort, showArchived, listVersion]);
 
   useEffect(() => {
     if (selectedId === null) return;
@@ -113,7 +117,8 @@ export default function Home() {
   }, [stream, pip]);
 
   // Folder counts change after uploads and generation; the server owns them.
-  const refreshFolders = () => api.folders(sort).then(setFolders, () => {});
+  const refreshFolders = () =>
+    api.folders(sort, showArchived).then(setFolders, () => {});
 
   type Outcome = { title: string; description?: string };
 
@@ -146,8 +151,10 @@ export default function Home() {
   ) {
     try {
       const saved = await save();
-      setFolders(await api.folders(sort));
       setSelectedId(saved.id);
+      // A new folder is never archived: show the main list it belongs to.
+      if (verb === "created" && showArchived) setShowArchived(false);
+      else setFolders(await api.folders(sort, showArchived));
       toast.success(`Folder “${saved.name}” ${verb}`);
     } catch (err) {
       toast.error(
@@ -159,6 +166,45 @@ export default function Home() {
         },
       );
       throw err;
+    }
+  }
+
+  async function archive(target: Folder) {
+    try {
+      await api.archiveFolder(target.id);
+      setListVersion((v) => v + 1);
+      toast.success(`Folder “${target.name}” archived`, {
+        description: "Find it under Archived at the bottom of the folder list.",
+        action: { label: "Undo", onClick: () => void restore(target) },
+      });
+    } catch (err) {
+      toast.error("Couldn’t archive folder", { description: message(err) });
+    }
+  }
+
+  async function restore(target: Folder) {
+    try {
+      await api.restoreFolder(target.id);
+      setSelectedId(target.id);
+      setShowArchived(false);
+      setListVersion((v) => v + 1);
+      toast.success(`Folder “${target.name}” restored`);
+    } catch (err) {
+      toast.error("Couldn’t restore folder", { description: message(err) });
+    }
+  }
+
+  async function removeShot(shot: Shot) {
+    const kind = shot.source === "text" ? "text" : "screenshot";
+    const what = shot.report ? `this ${kind} and its report` : `this ${kind}`;
+    if (!window.confirm(`Delete ${what}? This can’t be undone.`)) return;
+    try {
+      await api.deleteShot(shot.id);
+      setShots((current) => current.filter((s) => s.id !== shot.id));
+      toast.success(kind === "text" ? "Text deleted" : "Screenshot deleted");
+      void refreshFolders();
+    } catch (err) {
+      toast.error(`Couldn’t delete ${kind}`, { description: message(err) });
     }
   }
 
@@ -328,9 +374,7 @@ export default function Home() {
       </a>
       <aside className="sidebar no-print">
         <a href="#" className="brand" aria-label="ReVibe home">
-          <span className="brand-icon">
-            <AudioLines size={23} />
-          </span>
+          <Logo />
           ReVibe<span className="brand-dot">.</span>
         </a>
         <FolderBar
@@ -338,6 +382,10 @@ export default function Home() {
           selected={folder}
           sort={sort}
           disabled={!!busy}
+          archivedView={showArchived}
+          onToggleArchived={() => setShowArchived((v) => !v)}
+          onArchive={archive}
+          onRestore={restore}
           onSort={setSort}
           onSelect={setSelectedId}
           onCreate={(name) =>
@@ -363,6 +411,20 @@ export default function Home() {
           <div className="page-heading no-print">
             <div>
               <h1>{folder?.name ?? "Accomplishment reports"}</h1>
+              {folder?.archived && (
+                <p className="archived-note">
+                  <Archive size={14} />
+                  This folder is archived.
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void restore(folder)}
+                  >
+                    <ArchiveRestore size={14} />
+                    Restore
+                  </Button>
+                </p>
+              )}
               <ol className="how-to" aria-label="How it works">
                 <li>Add screenshots or paste text</li>
                 <li>Generate</li>
@@ -424,6 +486,7 @@ export default function Home() {
                     loading={loading}
                     canAdd={!busy}
                     onAdd={() => inputRef.current?.click()}
+                    onDelete={busy ? undefined : removeShot}
                   />
                 </TabsContent>
                 <TabsContent value="report">
@@ -444,8 +507,9 @@ export default function Home() {
                 <>
                   <FolderPlus size={22} />
                   <p>
-                    Create a folder in the left panel to start, e.g. “Nov 11 –
-                    Team 5”.
+                    {showArchived
+                      ? "No archived folders."
+                      : "Create a folder in the left panel to start, e.g. “Nov 11 – Team 5”."}
                   </p>
                 </>
               )}

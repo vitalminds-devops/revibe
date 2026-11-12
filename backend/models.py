@@ -23,6 +23,7 @@ class Folder(Base):
     id: Mapped[int] = mapped_column(BigId, primary_key=True)
     name: Mapped[str] = mapped_column(Text, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # hidden from the main list
     screenshots: Mapped[list["Screenshot"]] = relationship(back_populates="folder", passive_deletes=True)
 
 

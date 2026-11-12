@@ -114,6 +114,29 @@ class ReportTests(unittest.TestCase):
         storage.get.assert_not_called()
         self.assertEqual((done["report"], done["fields"]["task_no"], done["fields"]["category"]), ("Done", "1", "Repair"))
 
+    def test_delete_record_removes_image_and_updates_counts(self):
+        folder = self.folder()
+        shot = self.upload(folder["id"]).json()
+        text = self.client.post(f"/folders/{folder['id']}/texts", json={"text": "Task: 1"}).json()
+        with patch("backend.storage.delete") as delete:
+            self.assertEqual(self.client.delete(f"/screenshots/{shot['id']}").status_code, 204)
+            delete.assert_called_once_with(shot["image_key"])
+            self.assertEqual(self.client.delete(f"/screenshots/{text['id']}").status_code, 204)
+            delete.assert_called_once()  # pasted text has no image in R2
+        self.assertEqual(self.client.delete(f"/screenshots/{shot['id']}").status_code, 404)
+        self.assertEqual(self.client.get("/folders").json()[0]["screenshots"], 0)
+
+    def test_archived_folders_leave_the_main_list_and_can_be_restored(self):
+        team = self.folder("Team 5")
+        self.folder("Team 3")
+        archived = self.client.post(f"/folders/{team['id']}/archive").json()
+        self.assertTrue(archived["archived"])
+        self.assertEqual([f["name"] for f in self.client.get("/folders").json()], ["Team 3"])
+        self.assertEqual([f["name"] for f in self.client.get("/folders?archived=true").json()], ["Team 5"])
+        self.assertEqual(self.client.post(f"/folders/{team['id']}/restore").json()["archived"], False)
+        self.assertEqual(len(self.client.get("/folders").json()), 2)
+        self.assertEqual(self.client.post("/folders/999/archive").status_code, 404)
+
     def test_excel_export_is_named_after_folder_and_keeps_formulas_as_text(self):
         folder = self.folder("Team 5 / Nov")
         shot = self.upload(folder["id"]).json()

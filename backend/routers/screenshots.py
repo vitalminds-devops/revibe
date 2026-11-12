@@ -74,6 +74,17 @@ def add_text(folder_id: int, body: TextIn, session: SessionDep):
     return to_out(shot)
 
 
+@router.delete("/screenshots/{shot_id}", status_code=204)
+def delete_screenshot(shot_id: int, session: SessionDep):
+    shot = session.get(Screenshot, shot_id)
+    if not shot:
+        raise HTTPException(404, "Screenshot not found")
+    if shot.image_key:
+        storage.delete(shot.image_key)  # first: if R2 fails, the record stays and can be deleted again
+    session.delete(shot)
+    session.commit()
+
+
 @router.post("/screenshots/{shot_id}/report", response_model=ShotOut)
 def generate_report(shot_id: int, session: SessionDep):
     shot = session.get(Screenshot, shot_id)

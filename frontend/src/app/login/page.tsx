@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AudioLines, CircleAlert, LoaderCircle } from "lucide-react";
+import { CircleAlert, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/logo";
 import { authClient } from "@/lib/auth-client";
 
 export default function LoginPage() {
@@ -36,9 +37,7 @@ export default function LoginPage() {
     <main className="login-page">
       <div className="login-card">
         <div className="brand">
-          <span className="brand-icon">
-            <AudioLines size={23} />
-          </span>
+          <Logo />
           ReVibe<span className="brand-dot">.</span>
         </div>
         <h1>Sign in</h1>

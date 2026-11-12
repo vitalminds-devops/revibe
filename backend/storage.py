@@ -23,6 +23,10 @@ def get(key: str) -> bytes:
     return client().get_object(Bucket=os.environ["R2_BUCKET"], Key=key)["Body"].read()
 
 
+def delete(key: str):
+    client().delete_object(Bucket=os.environ["R2_BUCKET"], Key=key)
+
+
 def url(key: str) -> str:
     """Temporary link, so the bucket can stay private."""
     return client().generate_presigned_url(
