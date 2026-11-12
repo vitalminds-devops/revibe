@@ -35,6 +35,8 @@ class Screenshot(Base):
     image_key: Mapped[str | None] = mapped_column(Text)  # None for pasted text
     source: Mapped[str] = mapped_column(Text)  # "upload" | "screen" | "text"
     text: Mapped[str | None] = mapped_column(Text)  # pasted report text, read instead of an image
+    # More screenshots of the same message, after image_key in reading order (see POST /screenshots/combine).
+    extra_image_keys: Mapped[list[str] | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     fields: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
     report: Mapped[str | None] = mapped_column(Text)

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from backend import database, inference, storage
 from backend.models import Folder, Screenshot
-from backend.schemas import ShotOut, TextIn
+from backend.schemas import CombineIn, ShotOut, TextIn
 
 router = APIRouter(tags=["screenshots"])
 SessionDep = Annotated[Session, Depends(database.get_session)]
@@ -20,8 +20,13 @@ MAX_BYTES = 10 * 1024 * 1024
 def to_out(shot: Screenshot) -> ShotOut:
     return ShotOut(id=shot.id, folder_id=shot.folder_id, image_key=shot.image_key,
                    image_url=storage.url(shot.image_key) if shot.image_key else None, source=shot.source,
-                   text=shot.text, created_at=shot.created_at,
+                   text=shot.text, extra_image_urls=[storage.url(key) for key in shot.extra_image_keys or []],
+                   created_at=shot.created_at,
                    fields=shot.fields, report=shot.report, error=shot.error)
+
+
+def image_keys(shot: Screenshot) -> list[str]:
+    return [shot.image_key, *(shot.extra_image_keys or [])] if shot.image_key else []
 
 
 def require_folder(session: Session, folder_id: int):
@@ -79,10 +84,30 @@ def delete_screenshot(shot_id: int, session: SessionDep):
     shot = session.get(Screenshot, shot_id)
     if not shot:
         raise HTTPException(404, "Screenshot not found")
-    if shot.image_key:
-        storage.delete(shot.image_key)  # first: if R2 fails, the record stays and can be deleted again
+    for key in image_keys(shot):
+        storage.delete(key)  # first: if R2 fails, the record stays and can be deleted again
     session.delete(shot)
     session.commit()
+
+
+@router.post("/screenshots/combine", response_model=ShotOut)
+def combine_screenshots(body: CombineIn, session: SessionDep):
+    """Merge screenshots of one long message into the oldest one, in the order they were added."""
+    shots = session.scalars(select(Screenshot).where(Screenshot.id.in_(body.ids))).all()
+    if len(shots) != len(set(body.ids)):
+        raise HTTPException(404, "Screenshot not found")
+    if any(not shot.image_key for shot in shots):
+        raise HTTPException(400, "Only screenshots can be combined, not pasted text")
+    if len({shot.folder_id for shot in shots}) > 1:
+        raise HTTPException(400, "Screenshots must be in the same folder")
+    first, *rest = sorted(shots, key=lambda shot: (shot.created_at, shot.id))
+    first.extra_image_keys = [key for shot in [first, *rest] for key in image_keys(shot)][1:]
+    first.fields = first.report = first.error = None  # the combined message needs a new report
+    for shot in rest:
+        session.delete(shot)  # its images now belong to `first`; R2 keeps them
+    session.commit()
+    session.refresh(first)
+    return to_out(first)
 
 
 @router.post("/screenshots/{shot_id}/report", response_model=ShotOut)
@@ -92,7 +117,8 @@ def generate_report(shot_id: int, session: SessionDep):
         raise HTTPException(404, "Screenshot not found")
     session.commit()  # release the connection during the minute-long inference
     try:
-        result, error = inference.generate(shot.text or storage.get(shot.image_key)), None
+        source = shot.text or [storage.get(key) for key in image_keys(shot)]
+        result, error = inference.generate(source), None
     except HTTPException as exc:
         if exc.status_code != 400:
             raise  # model/server failures stay pending so they can be retried

@@ -89,16 +89,17 @@ model Folder {
 
 /// One captured or uploaded image (stored in R2 under imageKey), or pasted report text, and its generated report.
 model Screenshot {
-  id        BigInt   @id @default(autoincrement())
-  folderId  BigInt   @map("folder_id")
-  folder    Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  imageKey  String?  @map("image_key") // null for pasted text
-  source    String // "upload" | "screen" | "text"
-  text      String? // pasted report text, read instead of an image
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  fields    Json?
-  report    String?
-  error     String?
+  id             BigInt   @id @default(autoincrement())
+  folderId       BigInt   @map("folder_id")
+  folder         Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  imageKey       String?  @map("image_key") // null for pasted text
+  source         String // "upload" | "screen" | "text"
+  text           String? // pasted report text, read instead of an image
+  extraImageKeys Json?    @map("extra_image_keys") // more screenshots of the same message, in reading order
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  fields         Json?
+  report         String?
+  error          String?
 
   @@index([folderId, createdAt], map: "screenshots_folder_created")
   @@map("screenshots")

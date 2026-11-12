@@ -44,8 +44,12 @@
     -webkit-print-color-adjust: exact;
   }
 
-  .extracted-fields {
+  .extracted-fields,
+  .report-full summary {
     display: none;
+  }
+  .report-card {
+    break-inside: avoid;
   }
 
   h2,

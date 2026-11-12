@@ -28,6 +28,7 @@ import {
   type FolderSort,
   type Shot,
 } from "@/lib/api";
+import { approxTime, estimateSeconds } from "@/lib/estimate";
 import { summarizeReports } from "@/lib/report-summary";
 import { grabPng, openFloatingWindow } from "@/lib/screen-capture";
 import "./report-print.css";
@@ -208,6 +209,36 @@ export default function Home() {
     }
   }
 
+  async function combineShots(parts: Shot[]) {
+    const hadReport = parts.some((shot) => shot.report);
+    if (
+      hadReport &&
+      !window.confirm(
+        "Some of these already have a report. Combining replaces them with one new report. Continue?",
+      )
+    )
+      return false;
+    try {
+      const combined = await api.combine(parts.map((shot) => shot.id));
+      const merged = new Set(parts.map((shot) => shot.id));
+      setShots((current) =>
+        current
+          .filter((s) => s.id === combined.id || !merged.has(s.id))
+          .map((s) => (s.id === combined.id ? combined : s)),
+      );
+      toast.success(`${parts.length} screenshots combined`, {
+        description: "Click Generate to write one report from all of them.",
+      });
+      void refreshFolders();
+      return true;
+    } catch (err) {
+      toast.error("Couldn’t combine screenshots", {
+        description: message(err),
+      });
+      return false;
+    }
+  }
+
   async function signOut() {
     await authClient.signOut();
     router.replace("/login");
@@ -255,9 +286,15 @@ export default function Home() {
       "Report generation stopped",
       async (progress) => {
         let failed = 0;
+        const started = Date.now();
         for (const [index, shot] of pending.entries()) {
+          // After the first report, estimate from this server's real speed.
+          const average = index
+            ? (Date.now() - started) / 1000 / index
+            : undefined;
+          const left = estimateSeconds(pending.slice(index), average);
           progress(
-            `Generating report ${index + 1} of ${pending.length}… (about a minute each)`,
+            `Generating report ${index + 1} of ${pending.length}… ${approxTime(left)} left`,
           );
           const updated = await api.generate(shot.id);
           if (updated.error) failed += 1;
@@ -458,6 +495,7 @@ export default function Home() {
                   folderName={folder.name}
                   busy={busy}
                   pending={pending.length}
+                  eta={approxTime(estimateSeconds(pending))}
                   watch={canWatch ? watchPanel : null}
                   onFiles={(files) => void upload(files, "upload")}
                   onBrowse={() => inputRef.current?.click()}
@@ -487,6 +525,7 @@ export default function Home() {
                     canAdd={!busy}
                     onAdd={() => inputRef.current?.click()}
                     onDelete={busy ? undefined : removeShot}
+                    onCombine={busy ? undefined : combineShots}
                   />
                 </TabsContent>
                 <TabsContent value="report">

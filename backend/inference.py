@@ -100,6 +100,26 @@ def parse_fields(text: str) -> dict:
 
 
 def extract_fields(image_bytes: bytes) -> dict:
+    text = read_text(image_bytes)
+    if not text:
+        raise HTTPException(400, "No readable text found in the image")
+    return fields_from_text(text)
+
+
+def join_parts(parts: list[str]) -> str:
+    """Text of several screenshots of one message, in order, without the lines repeated where they overlap."""
+    # shortcut: drops exact repeats only; OCR differences in a cut-off line still repeat it.
+    lines: list[str] = []
+    for part in parts:
+        new = part.splitlines()
+        tail = {line.strip() for line in lines[-8:]}
+        while new and new[0].strip() in tail:
+            new.pop(0)
+        lines += new
+    return "\n".join(lines)
+
+
+def read_text(image_bytes: bytes) -> str:
     try:
         with Image.open(BytesIO(image_bytes)) as image:
             if image.width * image.height > 20_000_000:
@@ -110,10 +130,7 @@ def extract_fields(image_bytes: bytes) -> dict:
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as exc:
         raise HTTPException(400, "Upload a valid image file") from exc
     reader, _, _ = local_models()
-    lines = reader.readtext(pixels, detail=0, paragraph=True)
-    if not lines:
-        raise HTTPException(400, "No readable text found in the image")
-    return fields_from_text("\n".join(lines))
+    return "\n".join(reader.readtext(pixels, detail=0, paragraph=True))
 
 
 def fields_from_text(text: str) -> dict:
@@ -122,11 +139,19 @@ def fields_from_text(text: str) -> dict:
     return parse_fields(text)
 
 
-def generate(source: bytes | str) -> dict:
-    """source: screenshot bytes (read with OCR) or pasted report text (OCR skipped)."""
+def generate(source: bytes | list[bytes] | str) -> dict:
+    """source: screenshot bytes, several screenshots of one message in order, or pasted text (no OCR)."""
     with inference_lock:
         try:
-            fields = fields_from_text(source) if isinstance(source, str) else extract_fields(source)
+            if isinstance(source, str):
+                fields = fields_from_text(source)
+            elif isinstance(source, bytes):
+                fields = extract_fields(source)
+            else:
+                text = join_parts([read_text(image) for image in source])
+                if not text:
+                    raise HTTPException(400, "No readable text found in the images")
+                fields = fields_from_text(text)
             # Empty fields only make the model write blank lines, and every word costs time on CPU.
             text = chat(REPORT_PROMPT + json.dumps({k: v for k, v in fields.items() if v}, indent=2))
         except (OSError, RuntimeError) as exc:

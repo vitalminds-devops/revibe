@@ -19,6 +19,8 @@ export type Shot = {
   created_at: string;
   image_url: string | null;
   text: string | null;
+  /** More screenshots of the same message, after image_url in reading order. */
+  extra_image_urls: string[];
   fields: Record<string, string> | null;
   report: string | null;
   error: string | null;
@@ -111,6 +113,12 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
+    }),
+  combine: (shotIds: number[]) =>
+    request<Shot>("/screenshots/combine", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: shotIds }),
     }),
   deleteShot: (shotId: number) =>
     request<null>(`/screenshots/${shotId}`, { method: "DELETE" }),

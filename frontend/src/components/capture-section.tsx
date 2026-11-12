@@ -17,6 +17,8 @@ type Props = {
   folderName: string | null;
   busy: string;
   pending: number;
+  /** Approximate time to generate everything waiting, e.g. "about 2 min". */
+  eta: string;
   /** Live screen capture controls; null when the browser can't share a screen. */
   watch: React.ReactNode;
   onFiles: (files: File[]) => void;
@@ -30,6 +32,7 @@ export function CaptureSection({
   folderName,
   busy,
   pending,
+  eta,
   watch,
   onFiles,
   onBrowse,
@@ -144,7 +147,7 @@ export function CaptureSection({
       <div className="generate-row">
         <p>
           {pending
-            ? `${pending} item${pending === 1 ? "" : "s"} waiting for a report · about a minute each`
+            ? `${pending} item${pending === 1 ? "" : "s"} waiting for a report · ${eta}`
             : "Nothing waiting. Add a screenshot or text above, then generate."}
         </p>
         <Button onClick={onGenerate} disabled={!pending || !!busy}>

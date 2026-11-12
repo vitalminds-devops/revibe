@@ -17,7 +17,7 @@ from sqlalchemy.pool import StaticPool
 
 from backend import database, storage
 from backend.database import sqlalchemy_url
-from backend.inference import FIELDS, extract_fields, generate, parse_fields
+from backend.inference import FIELDS, extract_fields, generate, join_parts, parse_fields
 from backend.main import app
 from backend.models import Base
 
@@ -136,6 +136,43 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(self.client.post(f"/folders/{team['id']}/restore").json()["archived"], False)
         self.assertEqual(len(self.client.get("/folders").json()), 2)
         self.assertEqual(self.client.post("/folders/999/archive").status_code, 404)
+
+    def test_combine_screenshots_into_one_report_in_upload_order(self):
+        folder = self.folder()
+        first, second, third = (self.upload(folder["id"]).json() for _ in range(3))
+        text = self.client.post(f"/folders/{folder['id']}/texts", json={"text": "Task: 1"}).json()
+        with patch("backend.inference.generate", return_value={"fields": {"task_no": "1"}, "report": "Old"}):
+            self.client.post(f"/screenshots/{first['id']}/report")
+        self.assertEqual(self.client.post("/screenshots/combine", json={"ids": [first["id"]]}).status_code, 422)
+        self.assertEqual(self.client.post("/screenshots/combine", json={"ids": [first["id"], text["id"]]}).status_code, 400)
+        self.assertEqual(self.client.post("/screenshots/combine", json={"ids": [first["id"], 999]}).status_code, 404)
+
+        combined = self.client.post("/screenshots/combine", json={"ids": [third["id"], first["id"], second["id"]]}).json()
+        self.assertEqual(combined["id"], first["id"])
+        self.assertEqual(combined["extra_image_urls"], [f"https://r2/{second['image_key']}", f"https://r2/{third['image_key']}"])
+        self.assertEqual((combined["report"], combined["fields"]), (None, None))  # needs a new report
+        counts = self.client.get("/folders").json()[0]
+        self.assertEqual((counts["screenshots"], counts["pending"]), (2, 2))  # combined record + the text
+
+        with patch("backend.inference.generate", return_value={"fields": {}, "report": "Done"}) as generate:
+            self.client.post(f"/screenshots/{first['id']}/report")
+        self.assertEqual(len(generate.call_args.args[0]), 3)  # every image, in order
+        with patch("backend.storage.delete") as delete:
+            self.client.delete(f"/screenshots/{first['id']}")
+        self.assertEqual([c.args[0] for c in delete.call_args_list],
+                         [first["image_key"], second["image_key"], third["image_key"]])
+
+    def test_join_parts_drops_lines_repeated_where_screenshots_overlap(self):
+        self.assertEqual(join_parts(["Task: 1\nCategory: Repair", "Category: Repair\nRFO: Kink", "RFO: Kink"]),
+                         "Task: 1\nCategory: Repair\nRFO: Kink")
+        self.assertEqual(join_parts(["", "Task: 1"]), "Task: 1")
+        with patch("backend.inference.read_text", side_effect=["Task: 1", "JO Number: JO-9"]), \
+                patch("backend.inference.chat", return_value="Report"):
+            fields = generate([b"a", b"b"])["fields"]
+        self.assertEqual((fields["task_no"], fields["jo_number"]), ("1", "JO-9"))
+        with patch("backend.inference.read_text", return_value=""), self.assertRaises(HTTPException) as error:
+            generate([b"a", b"b"])
+        self.assertEqual(error.exception.status_code, 400)
 
     def test_excel_export_is_named_after_folder_and_keeps_formulas_as_text(self):
         folder = self.folder("Team 5 / Nov")

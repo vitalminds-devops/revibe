@@ -14,7 +14,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowDownToLine, FileText, ShieldCheck } from "lucide-react";
+import { ArrowDownToLine, ShieldCheck } from "lucide-react";
+import { plainReport, reportSummary } from "@/lib/report-text";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionHeading } from "@/components/section-heading";
@@ -91,6 +92,77 @@ function Donut({ data }: { data: ChartCount[] }) {
   );
 }
 
+// The facts a reviewer checks first, in reading order; empty ones are left out.
+function keyFacts(f: Record<string, string>): [string, string][] {
+  const times = [
+    f.arrival && `arrived ${f.arrival}`,
+    f.departure && `left ${f.departure}`,
+    f.done_rectification && `done ${f.done_rectification}`,
+  ].filter(Boolean);
+  const facts: [string, string | undefined][] = [
+    ["Issue", f.issue_type],
+    ["Location", [f.location, f.street_address].filter(Boolean).join(", ")],
+    ["NAP code", f.nap_code],
+    ["Time", times.join(" · ")],
+    ["Cause", f.rfo],
+    ["Action taken", f.action_taken],
+  ];
+  return facts.filter((fact): fact is [string, string] => !!fact[1]?.trim());
+}
+
+function ReportCard({ shot }: { shot: ReadyShot }) {
+  const f = shot.fields;
+  const people = [f.technician, f.team && `Team ${f.team}`]
+    .filter(Boolean)
+    .join(" · ");
+  const summary = reportSummary(shot.report);
+  return (
+    <li className="report-card">
+      <header>
+        <div>
+          <h4>{f.jo_number || `Report #${shot.id}`}</h4>
+          <p>
+            {[people, new Date(shot.created_at).toLocaleString()]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+        <span className="report-tags">
+          {[f.category, f.service_type].filter(Boolean).map((tag) => (
+            <span key={tag}>{tag}</span>
+          ))}
+        </span>
+      </header>
+      <dl className="report-facts">
+        {keyFacts(f).map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {summary && <p className="report-summary">{summary}</p>}
+      <details className="report-full">
+        <summary>Full report and all fields</summary>
+        <p className="report-full-text">{plainReport(shot.report)}</p>
+        <table className="extracted-fields">
+          <tbody>
+            {Object.entries(f)
+              .filter(([, value]) => value?.trim())
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([key, value]) => (
+                <tr key={key}>
+                  <th scope="row">{key.replaceAll("_", " ")}</th>
+                  <td>{value}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </details>
+    </li>
+  );
+}
+
 type Props = {
   folderName: string;
   exportUrl: string;
@@ -111,7 +183,15 @@ export function ReportSection({
     // Browsers use the page title as the suggested PDF file name.
     const title = document.title;
     document.title = `${folderName} – Accomplishment report`;
+    // Print each full report too, then put the collapsed view back.
+    const closed = [
+      ...document.querySelectorAll<HTMLDetailsElement>(
+        ".report-full:not([open])",
+      ),
+    ];
+    closed.forEach((d) => (d.open = true));
     window.print();
+    closed.forEach((d) => (d.open = false));
     document.title = title;
   }
 
@@ -231,56 +311,13 @@ export function ReportSection({
           </div>
           <section className="mt-7">
             <h3 className="mb-4 text-base font-semibold">
-              Reports by screenshot
+              Reports ({ready.length})
             </h3>
-            {ready.map((shot) => (
-              <Card key={shot.id} className="mb-4 shadow-none">
-                <CardHeader>
-                  <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                    <span className="flex items-center gap-2">
-                      <FileText size={16} className="text-primary" />
-                      Screenshot #{shot.id}
-                    </span>
-                    <time
-                      className="text-xs font-normal text-muted-foreground"
-                      dateTime={shot.created_at}
-                    >
-                      {new Date(shot.created_at).toLocaleString()}
-                    </time>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7">
-                    {shot.report}
-                  </pre>
-                  <details className="extracted-fields mt-5 rounded-lg border px-4 py-3">
-                    <summary className="cursor-pointer text-sm font-medium">
-                      View extracted fields
-                    </summary>
-                    <table className="mt-2 w-full table-fixed border-collapse text-sm">
-                      <tbody>
-                        {Object.entries(shot.fields).map(([key, value]) => (
-                          <tr
-                            key={key}
-                            className="border-b align-top last:border-0"
-                          >
-                            <th
-                              scope="row"
-                              className="w-1/3 break-words py-2 pr-4 text-left font-medium capitalize"
-                            >
-                              {key.replaceAll("_", " ")}
-                            </th>
-                            <td className="break-words py-2 text-muted-foreground">
-                              {value || "Not recorded"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </details>
-                </CardContent>
-              </Card>
-            ))}
+            <ul className="report-list">
+              {ready.map((shot) => (
+                <ReportCard key={shot.id} shot={shot} />
+              ))}
+            </ul>
           </section>
         </>
       ) : (
