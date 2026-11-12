@@ -122,7 +122,6 @@ export function ReportSection({
       className="page-section report-section"
     >
       <SectionHeading
-        step={4}
         title={`${folderName} · Accomplishment report`}
         description={
           summary.total
@@ -286,7 +285,8 @@ export function ReportSection({
         </>
       ) : (
         <p className="report-placeholder no-print">
-          No reports yet. Generate reports in step 2 to see charts and exports.
+          No reports yet. Add items above and click Generate to see charts and
+          exports.
         </p>
       )}
     </article>

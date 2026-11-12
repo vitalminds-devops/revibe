@@ -5,7 +5,7 @@ export function SectionHeading({
   description,
   children,
 }: {
-  step: number;
+  step?: number;
   title: string;
   description?: string;
   children?: React.ReactNode;
@@ -13,10 +13,12 @@ export function SectionHeading({
   return (
     <div className="section-heading">
       <div>
-        <div className="eyebrow no-print">
-          <span />
-          STEP {step}
-        </div>
+        {step && (
+          <div className="eyebrow no-print">
+            <span />
+            STEP {step}
+          </div>
+        )}
         <h2>{title}</h2>
         {description && <p>{description}</p>}
       </div>

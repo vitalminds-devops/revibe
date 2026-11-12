@@ -13,7 +13,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SectionHeading } from "@/components/section-heading";
 import { isPending, type Shot } from "@/lib/api";
 
 type Filter = "all" | "pending" | "ready";
@@ -43,20 +42,20 @@ export function ScreenshotGrid({ shots, loading, canAdd, onAdd }: Props) {
   return (
     <section
       id="screenshots"
-      className="page-section no-print"
-      aria-label="Screenshots"
+      className="no-print"
+      aria-label="Items in this folder"
     >
       <Tabs
         value={filter}
         onValueChange={(value) => setFilter(value as Filter)}
       >
-        <SectionHeading step={3} title={`Review (${shots.length})`}>
-          <TabsList aria-label="Filter screenshots">
+        <div className="grid-filter">
+          <TabsList aria-label="Filter">
             <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="pending">Pending</TabsTrigger>
+            <TabsTrigger value="pending">Waiting</TabsTrigger>
             <TabsTrigger value="ready">Ready</TabsTrigger>
           </TabsList>
-        </SectionHeading>
+        </div>
         <TabsContent value={filter}>
           {loading ? (
             <div className="screenshot-grid" aria-label="Loading screenshots">

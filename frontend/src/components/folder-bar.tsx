@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Check, FolderPlus, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SectionHeading } from "@/components/section-heading";
 import type { Folder, FolderSort } from "@/lib/api";
 
 type Props = {
@@ -16,7 +15,7 @@ type Props = {
   onRename: (id: number, name: string) => Promise<void>;
 };
 
-/** Named folders that group screenshots; the selected folder scopes capture, charts and exports. */
+/** Sidebar folder list; the selected folder scopes everything on the page. */
 export function FolderBar({
   folders,
   selected,
@@ -53,16 +52,9 @@ export function FolderBar({
   }
 
   return (
-    <section
-      id="folders"
-      className="page-section no-print"
-      aria-label="Folders"
-    >
-      <SectionHeading
-        step={1}
-        title="Choose a folder"
-        description="Each folder has its own screenshots, charts and exports."
-      >
+    <section id="folders" className="folder-panel" aria-label="Folders">
+      <div className="folder-panel-head">
+        <p className="nav-caption">FOLDERS</p>
         <label className="sr-only" htmlFor="folder-sort">
           Sort folders
         </label>
@@ -72,19 +64,20 @@ export function FolderBar({
           value={sort}
           onChange={(e) => onSort(e.target.value as FolderSort)}
         >
-          <option value="newest">Newest first</option>
-          <option value="name">Name A–Z</option>
+          <option value="newest">Newest</option>
+          <option value="name">A–Z</option>
         </select>
         <Button
+          size="icon"
           variant="outline"
-          size="sm"
+          aria-label="New folder"
+          title="New folder"
           onClick={() => open("create")}
           disabled={disabled}
         >
           <FolderPlus size={15} />
-          New folder
         </Button>
-      </SectionHeading>
+      </div>
 
       {mode !== "idle" && (
         <form className="folder-form" onSubmit={submit}>
@@ -132,7 +125,8 @@ export function FolderBar({
                 >
                   <span className="folder-name">{folder.name}</span>
                   <span className="folder-meta">
-                    {folder.reports}/{folder.screenshots} reports
+                    {folder.screenshots} item
+                    {folder.screenshots === 1 ? "" : "s"}
                     {folder.pending > 0 && ` · ${folder.pending} waiting`}
                   </span>
                 </button>
@@ -155,7 +149,7 @@ export function FolderBar({
       ) : (
         mode === "idle" && (
           <p className="folder-empty">
-            No folders yet. Create one, e.g. “Nov 11 – Team 5”.
+            No folders yet. Click + to create one, e.g. “Nov 11 – Team 5”.
           </p>
         )
       )}

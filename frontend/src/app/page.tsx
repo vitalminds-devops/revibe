@@ -6,21 +6,17 @@ import { toast } from "sonner";
 import {
   ArrowRight,
   AudioLines,
-  Camera,
-  FileImage,
-  FileText,
-  FolderOpen,
-  LayoutDashboard,
+  FolderPlus,
   LogOut,
   Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CaptureSection } from "@/components/capture-section";
 import { CaptureToolbar } from "@/components/capture-toolbar";
 import { FolderBar } from "@/components/folder-bar";
 import { ReportSection } from "@/components/report-section";
 import { ScreenshotGrid } from "@/components/screenshot-grid";
-import { SectionHeading } from "@/components/section-heading";
 import { authClient } from "@/lib/auth-client";
 import {
   api,
@@ -56,6 +52,7 @@ export default function Home() {
   const [shots, setShots] = useState<Shot[]>([]);
   const [loadedFor, setLoadedFor] = useState<number | null>(null);
   const [busy, setBusy] = useState("");
+  const [view, setView] = useState("items");
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -226,7 +223,7 @@ export default function Home() {
         return {
           title: `${done} report${done === 1 ? "" : "s"} generated`,
           description: failed
-            ? `${failed} item${failed === 1 ? "" : "s"} couldn’t be read. See step 3.`
+            ? `${failed} item${failed === 1 ? "" : "s"} couldn’t be read. See the Items tab.`
             : undefined,
         };
       },
@@ -336,58 +333,40 @@ export default function Home() {
           </span>
           ReVibe<span className="brand-dot">.</span>
         </a>
-        <p className="nav-caption">WORKSPACE</p>
-        <nav aria-label="Main navigation">
-          <a className="nav-item active" href="#main">
-            <LayoutDashboard size={18} />
-            Overview
-            <span className="nav-active-dot" />
-          </a>
-          <a className="nav-item" href="#folders">
-            <FolderOpen size={18} />
-            Folders<span className="nav-count">{folders?.length ?? 0}</span>
-          </a>
-          <a className="nav-item" href="#capture">
-            <Camera size={18} />
-            Add & generate
-          </a>
-          <a className="nav-item" href="#screenshots">
-            <FileImage size={18} />
-            Review<span className="nav-count">{visibleShots.length}</span>
-          </a>
-          <a className="nav-item" href="#reports">
-            <FileText size={18} />
-            Reports<span className="nav-count">{ready.length}</span>
-          </a>
-        </nav>
+        <FolderBar
+          folders={folders ?? []}
+          selected={folder}
+          sort={sort}
+          disabled={!!busy}
+          onSort={setSort}
+          onSelect={setSelectedId}
+          onCreate={(name) =>
+            saveFolder("created", () => api.createFolder(name))
+          }
+          onRename={(id, name) =>
+            saveFolder("renamed", () => api.renameFolder(id, name))
+          }
+        />
+        {session && (
+          <div className="sidebar-account">
+            <span className="account-email">{session.user.email}</span>
+            <Button variant="ghost" size="sm" onClick={signOut}>
+              <LogOut size={14} />
+              Sign out
+            </Button>
+          </div>
+        )}
       </aside>
 
       <div className="workspace-body">
-        <header className="topbar no-print">
-          <div className="breadcrumb">
-            Workspace <span>/</span>{" "}
-            <strong>{folder?.name ?? "No folder"}</strong>
-          </div>
-          {session && (
-            <div className="account">
-              <span className="account-email">{session.user.email}</span>
-              <Button variant="outline" size="sm" onClick={signOut}>
-                <LogOut size={14} />
-                Sign out
-              </Button>
-            </div>
-          )}
-        </header>
-
         <main id="main" className={`main-content ${stream ? "pb-36" : ""}`}>
           <div className="page-heading no-print">
             <div>
-              <h1>Accomplishment reports</h1>
+              <h1>{folder?.name ?? "Accomplishment reports"}</h1>
               <ol className="how-to" aria-label="How it works">
-                <li>Pick a folder</li>
                 <li>Add screenshots or paste text</li>
                 <li>Generate</li>
-                <li>Export</li>
+                <li>Open the Report tab to export</li>
               </ol>
             </div>
             <input
@@ -406,70 +385,71 @@ export default function Home() {
             />
           </div>
 
-          {/* Step 1 */}
-          <FolderBar
-            folders={folders ?? []}
-            selected={folder}
-            sort={sort}
-            disabled={!!busy}
-            onSort={setSort}
-            onSelect={setSelectedId}
-            onCreate={(name) =>
-              saveFolder("created", () => api.createFolder(name))
-            }
-            onRename={(id, name) =>
-              saveFolder("renamed", () => api.renameFolder(id, name))
-            }
-          />
+          {folder ? (
+            <>
+              <section
+                id="capture"
+                className="action-card no-print"
+                aria-label="Add and generate"
+              >
+                <CaptureSection
+                  folderName={folder.name}
+                  busy={busy}
+                  pending={pending.length}
+                  watch={canWatch ? watchPanel : null}
+                  onFiles={(files) => void upload(files, "upload")}
+                  onBrowse={() => inputRef.current?.click()}
+                  onText={addText}
+                  onGenerate={generate}
+                />
+              </section>
 
-          {/* Step 2 */}
-          <section
-            id="capture"
-            className="page-section no-print"
-            aria-label="Add and generate"
-          >
-            <SectionHeading
-              step={2}
-              title="Add reports, then generate"
-              description={
-                folder
-                  ? `Everything you add is saved to “${folder.name}”.`
-                  : "Create a folder in step 1 first."
-              }
-            />
-            <CaptureSection
-              folderName={folder?.name ?? null}
-              busy={busy}
-              pending={pending.length}
-              watch={canWatch && folder ? watchPanel : null}
-              onFiles={(files) => void upload(files, "upload")}
-              onBrowse={() => inputRef.current?.click()}
-              onText={addText}
-              onGenerate={generate}
-            />
-          </section>
+              {stream &&
+                (pip
+                  ? createPortal(toolbar(true), pip.document.body)
+                  : toolbar(false))}
 
-          {stream &&
-            (pip
-              ? createPortal(toolbar(true), pip.document.body)
-              : toolbar(false))}
-
-          {/* Step 3 */}
-          <ScreenshotGrid
-            shots={visibleShots}
-            loading={loading}
-            canAdd={!busy && !!folder}
-            onAdd={() => inputRef.current?.click()}
-          />
-
-          {/* Step 4 */}
-          {folder && (
-            <ReportSection
-              folderName={folder.name}
-              exportUrl={api.exportUrl(folder.id)}
-              ready={ready}
-              summary={summary}
-            />
+              <Tabs value={view} onValueChange={setView} className="results">
+                <TabsList aria-label="Results" className="no-print">
+                  <TabsTrigger value="items">
+                    Items ({visibleShots.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="report">
+                    Report ({ready.length})
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="items">
+                  <ScreenshotGrid
+                    shots={visibleShots}
+                    loading={loading}
+                    canAdd={!busy}
+                    onAdd={() => inputRef.current?.click()}
+                  />
+                </TabsContent>
+                <TabsContent value="report">
+                  <ReportSection
+                    folderName={folder.name}
+                    exportUrl={api.exportUrl(folder.id)}
+                    ready={ready}
+                    summary={summary}
+                  />
+                </TabsContent>
+              </Tabs>
+            </>
+          ) : (
+            <div className="start-card no-print">
+              {folders === null ? (
+                <span className="skeleton inline-block h-5 w-48 rounded" />
+              ) : (
+                <>
+                  <FolderPlus size={22} />
+                  <p>
+                    Create a folder in the left panel to start, e.g. “Nov 11 –
+                    Team 5”.
+                  </p>
+                </>
+              )}
+            </div>
           )}
         </main>
       </div>
