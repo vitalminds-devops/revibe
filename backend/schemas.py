@@ -9,6 +9,10 @@ class FolderIn(BaseModel):
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
 
 
+class TextIn(BaseModel):
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=12000)]
+
+
 class FolderOut(BaseModel):
     id: int
     name: str
@@ -21,9 +25,10 @@ class FolderOut(BaseModel):
 class ShotOut(BaseModel):
     id: int
     folder_id: int
-    image_key: str
-    image_url: str
-    source: Literal["upload", "screen"]
+    image_key: str | None
+    image_url: str | None
+    source: Literal["upload", "screen", "text"]
+    text: str | None
     created_at: datetime
     fields: dict[str, str] | None
     report: str | None

@@ -1,4 +1,4 @@
-"""Screenshot upload (stored in R2) and per-screenshot report generation."""
+"""Screenshot upload (stored in R2), pasted report text, and per-item report generation."""
 from io import BytesIO
 from typing import Annotated
 from uuid import uuid4
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from backend import database, inference, storage
 from backend.models import Folder, Screenshot
-from backend.schemas import ShotOut
+from backend.schemas import ShotOut, TextIn
 
 router = APIRouter(tags=["screenshots"])
 SessionDep = Annotated[Session, Depends(database.get_session)]
@@ -19,7 +19,8 @@ MAX_BYTES = 10 * 1024 * 1024
 
 def to_out(shot: Screenshot) -> ShotOut:
     return ShotOut(id=shot.id, folder_id=shot.folder_id, image_key=shot.image_key,
-                   image_url=storage.url(shot.image_key), source=shot.source, created_at=shot.created_at,
+                   image_url=storage.url(shot.image_key) if shot.image_key else None, source=shot.source,
+                   text=shot.text, created_at=shot.created_at,
                    fields=shot.fields, report=shot.report, error=shot.error)
 
 
@@ -63,6 +64,16 @@ def add_screenshot(folder_id: int, session: SessionDep, image: UploadFile = File
     return to_out(shot)
 
 
+@router.post("/folders/{folder_id}/texts", status_code=201, response_model=ShotOut)
+def add_text(folder_id: int, body: TextIn, session: SessionDep):
+    require_folder(session, folder_id)
+    shot = Screenshot(folder_id=folder_id, source="text", text=body.text)
+    session.add(shot)
+    session.commit()
+    session.refresh(shot)
+    return to_out(shot)
+
+
 @router.post("/screenshots/{shot_id}/report", response_model=ShotOut)
 def generate_report(shot_id: int, session: SessionDep):
     shot = session.get(Screenshot, shot_id)
@@ -70,7 +81,7 @@ def generate_report(shot_id: int, session: SessionDep):
         raise HTTPException(404, "Screenshot not found")
     session.commit()  # release the connection during the minute-long inference
     try:
-        result, error = inference.generate(storage.get(shot.image_key)), None
+        result, error = inference.generate(shot.text or storage.get(shot.image_key)), None
     except HTTPException as exc:
         if exc.status_code != 400:
             raise  # model/server failures stay pending so they can be retried

@@ -86,13 +86,14 @@ model Folder {
   @@map("folders")
 }
 
-/// One captured or uploaded image (stored in R2 under imageKey) and its generated report.
+/// One captured or uploaded image (stored in R2 under imageKey), or pasted report text, and its generated report.
 model Screenshot {
   id        BigInt   @id @default(autoincrement())
   folderId  BigInt   @map("folder_id")
   folder    Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  imageKey  String   @map("image_key")
-  source    String // "upload" | "screen"
+  imageKey  String?  @map("image_key") // null for pasted text
+  source    String // "upload" | "screen" | "text"
+  text      String? // pasted report text, read instead of an image
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   fields    Json?
   report    String?

@@ -15,7 +15,7 @@ services:
       context: ./frontend
       args:
         # Baked into the website's /api rewrite: rebuild after changing BACKEND_PORT.
-        API_URL: http://backend:${BACKEND_PORT:-3000}
+        API_URL: http://backend:${BACKEND_PORT:-8000}
     image: revibe-web
     command: ["npm", "run", "db:migrate"]
     restart: "no"

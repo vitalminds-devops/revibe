@@ -31,8 +31,9 @@ class Screenshot(Base):
 
     id: Mapped[int] = mapped_column(BigId, primary_key=True)
     folder_id: Mapped[int] = mapped_column(ForeignKey("folders.id", ondelete="CASCADE"), index=True)
-    image_key: Mapped[str] = mapped_column(Text)
-    source: Mapped[str] = mapped_column(Text)  # "upload" | "screen"
+    image_key: Mapped[str | None] = mapped_column(Text)  # None for pasted text
+    source: Mapped[str] = mapped_column(Text)  # "upload" | "screen" | "text"
+    text: Mapped[str | None] = mapped_column(Text)  # pasted report text, read instead of an image
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     fields: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"))
     report: Mapped[str | None] = mapped_column(Text)

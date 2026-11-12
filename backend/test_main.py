@@ -99,6 +99,21 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(self.client.post(f"/screenshots/{shot['id']}/report").status_code, 503)
         self.assertEqual(self.client.post("/screenshots/999/report").status_code, 404)
 
+    def test_pasted_text_counts_in_folder_and_skips_ocr(self):
+        folder = self.folder()
+        self.assertEqual(self.client.post(f"/folders/{folder['id']}/texts", json={"text": "  "}).status_code, 422)
+        self.assertEqual(self.client.post("/folders/999/texts", json={"text": "x"}).status_code, 404)
+        entry = self.client.post(f"/folders/{folder['id']}/texts", json={"text": " Task: 1\nCategory: Repair "}).json()
+        self.assertEqual((entry["source"], entry["text"], entry["image_url"]), ("text", "Task: 1\nCategory: Repair", None))
+        counts = self.client.get("/folders").json()[0]
+        self.assertEqual((counts["screenshots"], counts["pending"]), (1, 1))
+        with patch("backend.inference.chat", return_value="Done"), \
+                patch("backend.inference.extract_fields") as ocr:
+            done = self.client.post(f"/screenshots/{entry['id']}/report").json()
+        ocr.assert_not_called()
+        storage.get.assert_not_called()
+        self.assertEqual((done["report"], done["fields"]["task_no"], done["fields"]["category"]), ("Done", "1", "Repair"))
+
     def test_excel_export_is_named_after_folder_and_keeps_formulas_as_text(self):
         folder = self.folder("Team 5 / Nov")
         shot = self.upload(folder["id"]).json()

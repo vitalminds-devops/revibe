@@ -7,19 +7,14 @@ import {
   ArrowRight,
   AudioLines,
   Camera,
-  CheckCheck,
-  Clock3,
-  FileCheck2,
   FileImage,
   FileText,
   FolderOpen,
   LayoutDashboard,
   LogOut,
   Monitor,
-  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { CaptureSection } from "@/components/capture-section";
 import { CaptureToolbar } from "@/components/capture-toolbar";
 import { FolderBar } from "@/components/folder-bar";
@@ -175,7 +170,7 @@ export default function Home() {
     router.replace("/login");
   }
 
-  function upload(images: Blob[], source: Shot["source"]) {
+  function upload(images: Blob[], source: "upload" | "screen") {
     if (!folder) return;
     const folderId = folder.id;
     const folderName = folder.name;
@@ -198,6 +193,19 @@ export default function Home() {
     );
   }
 
+  async function addText(text: string) {
+    if (!folder) return false;
+    const { id: folderId, name: folderName } = folder;
+    let added = false;
+    await run("Saving text…", "Couldn’t save text", async () => {
+      const shot = await api.addText(folderId, text);
+      setShots((current) => [shot, ...current]);
+      added = true;
+      return { title: "Text saved", description: `In “${folderName}”` };
+    });
+    return added;
+  }
+
   function generate() {
     return run(
       "Generating reports…",
@@ -218,7 +226,7 @@ export default function Home() {
         return {
           title: `${done} report${done === 1 ? "" : "s"} generated`,
           description: failed
-            ? `${failed} screenshot${failed === 1 ? "" : "s"} couldn’t be read. See step 3.`
+            ? `${failed} item${failed === 1 ? "" : "s"} couldn’t be read. See step 3.`
             : undefined,
         };
       },
@@ -280,6 +288,42 @@ export default function Home() {
     />
   );
 
+  const watchPanel = folder && (
+    <div className="live-section">
+      <div className="live-intro">
+        <span className={`live-icon ${stream ? "is-live" : ""}`}>
+          <Monitor size={20} />
+        </span>
+        <div>
+          <h3>
+            {stream ? `Watching · saving to ${folder.name}` : "Watch a screen"}
+          </h3>
+          <p>
+            {stream
+              ? "Use the bar at the bottom to take a screenshot when a report is on screen."
+              : "Mirror your phone with scrcpy or Phone Link, then pick that window."}
+          </p>
+        </div>
+      </div>
+      {!stream && (
+        <Button variant="outline" onClick={watch}>
+          <Monitor size={15} />
+          Watch screen
+          <ArrowRight size={14} />
+        </Button>
+      )}
+      {stream && (
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          className="mt-4 max-h-[60vh] w-full rounded-xl border bg-black object-contain"
+        />
+      )}
+    </div>
+  );
+
   return (
     <div className="workspace">
       <a href="#main" className="skip-link">
@@ -305,11 +349,11 @@ export default function Home() {
           </a>
           <a className="nav-item" href="#capture">
             <Camera size={18} />
-            Capture
+            Add & generate
           </a>
           <a className="nav-item" href="#screenshots">
             <FileImage size={18} />
-            Screenshots<span className="nav-count">{visibleShots.length}</span>
+            Review<span className="nav-count">{visibleShots.length}</span>
           </a>
           <a className="nav-item" href="#reports">
             <FileText size={18} />
@@ -337,16 +381,15 @@ export default function Home() {
 
         <main id="main" className={`main-content ${stream ? "pb-36" : ""}`}>
           <div className="page-heading no-print">
-            <h1>Accomplishment reports</h1>
-            <Button
-              variant="outline"
-              onClick={() => inputRef.current?.click()}
-              disabled={!!busy || !folder}
-              className="bg-white"
-            >
-              <Plus size={16} />
-              Add screenshots
-            </Button>
+            <div>
+              <h1>Accomplishment reports</h1>
+              <ol className="how-to" aria-label="How it works">
+                <li>Pick a folder</li>
+                <li>Add screenshots or paste text</li>
+                <li>Generate</li>
+                <li>Export</li>
+              </ol>
+            </div>
             <input
               ref={inputRef}
               type="file"
@@ -361,54 +404,6 @@ export default function Home() {
                 event.target.value = "";
               }}
             />
-          </div>
-
-          {/* Overview: totals for the selected folder, then app-wide status. */}
-          <div className="stats-grid no-print">
-            {[
-              {
-                label: "Screenshots",
-                value: visibleShots.length,
-                icon: FileImage,
-                color: "violet",
-              },
-              {
-                label: "Reports ready",
-                value: ready.length,
-                icon: FileCheck2,
-                color: "green",
-              },
-              {
-                label: "Waiting for report",
-                value: pending.length,
-                icon: Clock3,
-                color: "amber",
-              },
-              {
-                label: "With rectification time",
-                value: summary.recorded,
-                icon: CheckCheck,
-                color: "blue",
-              },
-            ].map(({ label, value, icon: Icon, color }) => (
-              <Card key={label} className="stat-card shadow-none">
-                <CardContent className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="stat-label">{label}</p>
-                    <p className="stat-value">
-                      {loading ? (
-                        <span className="skeleton inline-block h-9 w-12 rounded" />
-                      ) : (
-                        value.toString().padStart(2, "0")
-                      )}
-                    </p>
-                  </div>
-                  <span className={`stat-icon ${color}`}>
-                    <Icon size={20} />
-                  </span>
-                </CardContent>
-              </Card>
-            ))}
           </div>
 
           {/* Step 1 */}
@@ -431,14 +426,14 @@ export default function Home() {
           <section
             id="capture"
             className="page-section no-print"
-            aria-label="Capture screenshots"
+            aria-label="Add and generate"
           >
             <SectionHeading
               step={2}
-              title="Capture screenshots"
+              title="Add reports, then generate"
               description={
                 folder
-                  ? `Saved to “${folder.name}”.`
+                  ? `Everything you add is saved to “${folder.name}”.`
                   : "Create a folder in step 1 first."
               }
             />
@@ -446,51 +441,12 @@ export default function Home() {
               folderName={folder?.name ?? null}
               busy={busy}
               pending={pending.length}
+              watch={canWatch && folder ? watchPanel : null}
               onFiles={(files) => void upload(files, "upload")}
               onBrowse={() => inputRef.current?.click()}
+              onText={addText}
               onGenerate={generate}
             />
-
-            {canWatch && folder && (
-              <section
-                className="live-section no-print"
-                aria-label="Live screen capture"
-              >
-                <div className="live-intro">
-                  <span className={`live-icon ${stream ? "is-live" : ""}`}>
-                    <Monitor size={20} />
-                  </span>
-                  <div>
-                    <h3>
-                      {stream
-                        ? `Watching · saving to ${folder.name}`
-                        : "Watch a screen"}
-                    </h3>
-                    <p>
-                      {stream
-                        ? "Take a screenshot when a report is on screen."
-                        : "Mirror your phone with scrcpy or Phone Link, then pick that window."}
-                    </p>
-                  </div>
-                </div>
-                {!stream && (
-                  <Button variant="outline" onClick={watch}>
-                    <Monitor size={15} />
-                    Watch screen
-                    <ArrowRight size={14} />
-                  </Button>
-                )}
-                {stream && (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="mt-4 max-h-[60vh] w-full rounded-xl border bg-black object-contain"
-                  />
-                )}
-              </section>
-            )}
           </section>
 
           {stream &&

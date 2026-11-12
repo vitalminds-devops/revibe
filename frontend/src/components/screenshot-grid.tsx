@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Check,
   CircleAlert,
+  ClipboardPaste,
   Clock3,
   Monitor,
   Plus,
@@ -18,8 +19,8 @@ import { isPending, type Shot } from "@/lib/api";
 type Filter = "all" | "pending" | "ready";
 
 const EMPTY: Record<Filter, string> = {
-  all: "No screenshots in this folder yet.",
-  pending: "No screenshots waiting for a report.",
+  all: "Nothing in this folder yet.",
+  pending: "Nothing waiting for a report.",
   ready: "No reports yet.",
 };
 
@@ -30,7 +31,7 @@ type Props = {
   onAdd: () => void;
 };
 
-/** Screenshots in the selected folder, filterable by report status. */
+/** Screenshots and pasted texts in the selected folder, filterable by report status. */
 export function ScreenshotGrid({ shots, loading, canAdd, onAdd }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const visible = shots.filter(
@@ -49,7 +50,7 @@ export function ScreenshotGrid({ shots, loading, canAdd, onAdd }: Props) {
         value={filter}
         onValueChange={(value) => setFilter(value as Filter)}
       >
-        <SectionHeading step={3} title={`Review screenshots (${shots.length})`}>
+        <SectionHeading step={3} title={`Review (${shots.length})`}>
           <TabsList aria-label="Filter screenshots">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>
@@ -67,26 +68,35 @@ export function ScreenshotGrid({ shots, loading, canAdd, onAdd }: Props) {
             <ul className="screenshot-grid">
               {visible.map((shot) => (
                 <li key={shot.id} className="shot-card">
-                  <a
-                    href={shot.image_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="shot-image-link"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- presigned R2 URLs are not optimizable */}
-                    <img
-                      src={shot.image_url}
-                      alt={`Open screenshot ${shot.id}`}
-                      className="shot-image"
-                    />
-                    <span className="shot-open">
-                      Open screenshot <ArrowRight size={14} />
-                    </span>
-                  </a>
+                  {shot.image_url ? (
+                    <a
+                      href={shot.image_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shot-image-link"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element -- presigned R2 URLs are not optimizable */}
+                      <img
+                        src={shot.image_url}
+                        alt={`Open screenshot ${shot.id}`}
+                        className="shot-image"
+                      />
+                      <span className="shot-open">
+                        Open screenshot <ArrowRight size={14} />
+                      </span>
+                    </a>
+                  ) : (
+                    <p className="shot-text">{shot.text}</p>
+                  )}
                   <div className="shot-info">
                     <div className="flex items-center justify-between gap-2">
-                      <h3>Screenshot #{shot.id}</h3>
-                      {shot.source === "screen" ? (
+                      <h3>
+                        {shot.source === "text" ? "Text" : "Screenshot"} #
+                        {shot.id}
+                      </h3>
+                      {shot.source === "text" ? (
+                        <ClipboardPaste size={14} />
+                      ) : shot.source === "screen" ? (
                         <Monitor size={14} />
                       ) : (
                         <Upload size={14} />

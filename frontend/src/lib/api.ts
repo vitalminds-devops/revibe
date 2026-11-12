@@ -14,9 +14,10 @@ export type FolderSort = "newest" | "name";
 export type Shot = {
   id: number;
   folder_id: number;
-  source: "upload" | "screen";
+  source: "upload" | "screen" | "text";
   created_at: string;
-  image_url: string;
+  image_url: string | null;
+  text: string | null;
   fields: Record<string, string> | null;
   report: string | null;
   error: string | null;
@@ -81,7 +82,7 @@ export const api = {
     request<Shot[]>(`/folders/${folderId}/screenshots`, {
       signal: listSignal(signal),
     }),
-  upload(folderId: number, image: Blob, source: Shot["source"]) {
+  upload(folderId: number, image: Blob, source: "upload" | "screen") {
     if (!image.type.startsWith("image/"))
       throw new Error("Please choose image files only");
     if (image.size > MAX_IMAGE_BYTES)
@@ -98,6 +99,12 @@ export const api = {
       body,
     });
   },
+  addText: (folderId: number, text: string) =>
+    request<Shot>(`/folders/${folderId}/texts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    }),
   generate: (shotId: number) =>
     request<Shot>(`/screenshots/${shotId}/report`, { method: "POST" }),
   exportUrl: (folderId: number) => `/api/folders/${folderId}/export.xlsx`,

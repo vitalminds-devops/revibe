@@ -2,6 +2,7 @@
 from functools import lru_cache
 from io import BytesIO
 import json
+import logging
 import re
 from threading import Lock
 
@@ -53,6 +54,15 @@ def local_models():
     return reader, tokenizer, model
 
 
+def warm_up():
+    """Load the models at server start so the first report doesn't wait for them."""
+    try:
+        with inference_lock:
+            local_models()
+    except Exception:
+        logging.exception("Loading the local models failed")
+
+
 def chat(content: str) -> str:
     _, tokenizer, model = local_models()
     prompt = tokenizer.apply_chat_template(
@@ -61,7 +71,8 @@ def chat(content: str) -> str:
     )
     inputs = tokenizer(prompt, return_tensors="pt")
     with torch.inference_mode():
-        output = model.generate(**inputs, max_new_tokens=1000, do_sample=False,
+        # ~180 words is ~300 tokens; the cap stops a rambling answer from taking minutes.
+        output = model.generate(**inputs, max_new_tokens=450, do_sample=False,
                                 pad_token_id=tokenizer.eos_token_id)
     return tokenizer.decode(output[0, inputs.input_ids.shape[1]:], skip_special_tokens=True).strip()
 
@@ -102,18 +113,24 @@ def extract_fields(image_bytes: bytes) -> dict:
     lines = reader.readtext(pixels, detail=0, paragraph=True)
     if not lines:
         raise HTTPException(400, "No readable text found in the image")
-    text = "\n".join(lines)
+    return fields_from_text("\n".join(lines))
+
+
+def fields_from_text(text: str) -> dict:
     if len(text) > 12000:
         raise HTTPException(400, "Too much text; upload one report at a time")
     return parse_fields(text)
 
 
-def generate(image_bytes: bytes) -> dict:
+def generate(source: bytes | str) -> dict:
+    """source: screenshot bytes (read with OCR) or pasted report text (OCR skipped)."""
     with inference_lock:
         try:
-            fields = extract_fields(image_bytes)
-            text = chat(REPORT_PROMPT + json.dumps(fields, indent=2))
+            fields = fields_from_text(source) if isinstance(source, str) else extract_fields(source)
+            # Empty fields only make the model write blank lines, and every word costs time on CPU.
+            text = chat(REPORT_PROMPT + json.dumps({k: v for k, v in fields.items() if v}, indent=2))
         except (OSError, RuntimeError) as exc:
+            logging.exception("Local inference failed")  # the 503 hides the cause; keep it in `docker compose logs backend`
             raise HTTPException(503, "Local inference failed. Verify the downloaded model files and available memory.") from exc
     if not text:
         raise HTTPException(502, "Local model returned an empty report")

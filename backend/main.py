@@ -1,9 +1,10 @@
 """ReVibe API: folders of screenshots -> local OCR/LLM accomplishment reports."""
 from contextlib import asynccontextmanager
+from threading import Thread
 
 from fastapi import FastAPI
 
-from backend import config, database
+from backend import config, database, inference
 from backend.routers import folders, screenshots
 
 
@@ -11,6 +12,7 @@ from backend.routers import folders, screenshots
 async def lifespan(_app):
     config.require_settings()
     database.check_schema()
+    Thread(target=inference.warm_up, daemon=True).start()  # in the background: the API answers meanwhile
     yield
 
 
