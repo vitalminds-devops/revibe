@@ -1,9 +1,0 @@
-node_modules
-.next
-src/generated
-.env*
-!.env.example
-tsconfig.tsbuildinfo
-.playwright-mcp
-Dockerfile
-.dockerignore

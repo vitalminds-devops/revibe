@@ -1,8 +1,0 @@
-- generic [active] [ref=e1]:
-  - main [ref=e2]:
-    - heading "Accomplishment Report Generator" [level=1] [ref=e3]
-    - paragraph [ref=e4]: Uses local OCR and AI models. CPU processing may take a few minutes. Review the result for accuracy.
-    - generic [ref=e5]:
-      - button "Choose File" [ref=e6]
-      - button "Generate report" [disabled] [ref=e7]
-  - button "Open Next.js Dev Tools" [ref=e13] [cursor=pointer]

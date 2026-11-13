@@ -1,0 +1,4 @@
+/target
+/gen/schemas
+# Model weights (~1 GB): copied in by hand, see DEVELOPMENT.md
+/models

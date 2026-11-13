@@ -1,5 +1,14 @@
-.venv/
-.env
-backend/.env
-__pycache__/
-backend/models/
+# dependencies
+/node_modules
+
+# UI build output (bundled into the app)
+/.next/
+/out/
+*.tsbuildinfo
+next-env.d.ts
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+.env*

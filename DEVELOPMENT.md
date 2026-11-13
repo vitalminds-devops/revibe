@@ -1,65 +1,66 @@
-# Running ReVibe in development
+# Developing ReVibe
 
-Hot-reload setup on a Windows PC. For production, Docker and full settings, see [README.md](README.md).
+## Prerequisites (Windows)
 
-## Prerequisites
+- Node.js 24+
+- Rust (`winget install Rustlang.Rustup`)
+- Visual Studio 2022 Build Tools with the C++ workload
+  (`winget install Microsoft.VisualStudio.2022.BuildTools --override "--passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"`)
+- The model files in `src-tauri/models/` (not in Git, ~1 GB):
 
-- Python 3.11+ and Node.js 24+
-- A PostgreSQL database and a Cloudflare R2 bucket
-- Model files in `backend/models/` (`easyocr/` and `Qwen2.5-0.5B-Instruct/`); they are not in Git
-- A filled-in `.env` in the repo root (the settings table is in [README.md § Configure](README.md#1-configure))
+  ```
+  models/
+    text-detection.onnx      https://ocrs-models.s3-accelerate.amazonaws.com/text-detection.onnx
+    text-recognition.onnx    https://ocrs-models.s3-accelerate.amazonaws.com/text-recognition.onnx
+    qwen/                    from https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct
+      config.json
+      model.safetensors
+      tokenizer.json
+      LICENSE
+  ```
 
-## First-time setup
+## Run and build
 
-From the repo root, in PowerShell:
-
-```powershell
-py -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r backend/requirements.txt
-
-cd frontend
-npm ci                          # also generates the Prisma client
-npm run auth:provision admin    # applies migrations, then asks for an admin email + password
-cd ..
-```
-
-## Run
-
-Two terminals, both started in the repo root.
-
-**Terminal 1: backend (FastAPI, auto-reloads on Python changes)**
+In the repo root:
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir backend
+npm ci
+npm run dev       # opens the app window; UI edits reload live, Rust edits rebuild the app
+npm run build     # installer: src-tauri/target/release/bundle/nsis/ReVibe_<version>_x64-setup.exe
 ```
 
-**Terminal 2: frontend (Next.js dev server, hot reload)**
+The app only runs as the desktop window: the UI calls the Rust core through Tauri, so opening
+the dev server in a browser shows nothing useful. In dev the models load from
+`src-tauri/target/debug/models/` (copied on build). Report generation is much slower in a debug
+build; use `npm run build` to judge speed.
 
-```powershell
-cd frontend
-npm run dev                     # runs db:migrate first
-```
+## Checks
 
-Open http://localhost:3000 and sign in with the admin you provisioned.
-
-The website forwards `/api/*` to the backend at `http://127.0.0.1:8000`. Set `API_URL` to point it somewhere else.
-
-`--reload` restarts the backend on each save, and that restart loads the OCR/LLM models again. Leave the flag off when you're testing report generation.
-
-## Common dev tasks
-
-| Task | Command (in `frontend/` unless noted) |
+| Check | Command |
 |---|---|
-| Change the DB schema | Edit `prisma/schema.prisma`, run `npm run db:migrate:dev -- --name <change>`, then update `backend/models.py` to match |
-| Apply migrations | `npm run db:migrate` |
-| Manage admins | `npm run auth:list`, `npm run auth:remove <email>` |
-| Lint | `npm run lint` |
-| Frontend tests | `node --test tests/report-summary.test.mjs` |
-| Backend tests (repo root) | `.\.venv\Scripts\python.exe -m backend.test_main` |
-| Backend integration test (repo root, uses real models) | `.\.venv\Scripts\python.exe -m backend.test_main --integration` |
+| Rust unit tests (in `src-tauri/`) | `cargo test --release` |
+| Real-model check on `sample.png`, about 2 minutes | `cargo test --release -- --ignored --nocapture` |
+| UI tests and lint | `npm test`, `npm run lint` |
 
-## Notes
+## Project structure
 
-- The dev server is for this PC only. To test from a phone, use `npm run build` and then `npm start -- -H 0.0.0.0` (see README).
-- **Watch screen** works only on `http://localhost:3000`, because browsers allow screen capture only on secure origins.
-- Problems: see [README.md § Troubleshooting](README.md#troubleshooting).
+The Rust side is layered; each layer calls only the ones below it.
+
+```
+src/                        Next.js UI, exported to static files bundled into the app
+  lib/api.ts                typed calls to the Rust commands (Tauri invoke)
+src-tauri/src/
+  lib.rs                    app wiring: state, command registration
+  commands/                 Tauri API: unpack arguments, call a service, shape the answer
+    folders.rs  screenshots.rs  reports.rs
+  services/                 rules: validation, must-exist lookups, multi-step operations
+    folders.rs  screenshots.rs  reports.rs
+  db/                       SQLite: schema (mod.rs) and one module of queries per table
+  storage.rs                image files under the app data folder
+  inference/                local AI: parser.rs (text -> fields), ocr.rs, llm.rs, mod.rs (pipeline)
+  excel.rs                  Excel export
+  domain.rs  error.rs  state.rs   shared types, the error commands return, app state
+src-tauri/tauri.conf.json   window, bundled models/, asset protocol for the image files
+```
+
+App data (database and images) lives in `%APPDATA%\com.revibe.desktop\`.

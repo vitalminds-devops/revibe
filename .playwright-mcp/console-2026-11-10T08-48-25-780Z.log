@@ -1,9 +1,0 @@
-[     362ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/_next/static/chunks/node_modules_next_dist_1bjkg68unqmjx._.js:761
-[     469ms] [LOG] [HMR] connected @ http://localhost:3002/_next/static/chunks/node_modules_next_dist_1bjkg68unqmjx._.js:761
-[  438440ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3002/_next/static/chunks/node_modules_next_dist_1bjkg68unqmjx._.js:761
-[  438480ms] [LOG] [Fast Refresh] done in 105ms @ http://localhost:3002/_next/static/chunks/node_modules_next_dist_1bjkg68unqmjx._.js:761
-[  482901ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3002/_next/static/chunks/node_modules_next_dist_1bjkg68unqmjx._.js:761
-[  482924ms] [LOG] [Fast Refresh] done in 22ms @ http://localhost:3002/_next/static/chunks/node_modules_next_dist_1bjkg68unqmjx._.js:761
-[  483214ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3002/_next/static/chunks/node_modules_next_dist_1bjkg68unqmjx._.js:761
-[  483245ms] [LOG] [HMR] connected @ http://localhost:3002/_next/static/chunks/node_modules_next_dist_1bjkg68unqmjx._.js:761
-[  483415ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://localhost:8000/report:1
